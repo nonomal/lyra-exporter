@@ -457,7 +457,7 @@ const useFileManager = () => {
 function App() {
   // ==================== Hooks和状态管理 ====================
   // i18n
-  const { t } = useI18n();
+  const { t, currentLanguage } = useI18n();
   
   const { 
     files, 
@@ -660,8 +660,7 @@ function App() {
       processedData,
       files,
       currentFileIndex,
-      fileMetadata,
-      starActions: starManagerRef.current
+      fileMetadata
     });
   }, [viewMode, selectedFileIndex, selectedConversationUuid, processedData, files, currentFileIndex, fileMetadata, renameVersion]);
 
