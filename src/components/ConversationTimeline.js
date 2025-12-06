@@ -1376,6 +1376,7 @@ const ConversationTimeline = ({
   // 优先根据format判断，因为format更准确
   if (format === 'jsonl_chat') return 'assistant platform-jsonl_chat';
   if (format === 'chatgpt') return 'assistant platform-chatgpt';
+  if (format === 'grok') return 'assistant platform-grok';
   if (format === 'gemini_notebooklm') {
     const platformLower = platform?.toLowerCase() || '';
     if (platformLower.includes('notebooklm')) return 'assistant platform-notebooklm';
@@ -1386,6 +1387,7 @@ const ConversationTimeline = ({
   const platformLower = platform?.toLowerCase() || 'claude';
   if (platformLower.includes('jsonl')) return 'assistant platform-jsonl_chat';
   if (platformLower.includes('chatgpt')) return 'assistant platform-chatgpt';
+  if (platformLower.includes('grok')) return 'assistant platform-grok';
   if (platformLower.includes('gemini')) return 'assistant platform-gemini';
   if (platformLower.includes('ai studio') || platformLower.includes('aistudio')) return 'assistant platform-aistudio';
   if (platformLower.includes('notebooklm')) return 'assistant platform-notebooklm';
@@ -1651,7 +1653,7 @@ const ConversationTimeline = ({
                           <div className="sender-info">
                             <div className="sender-name">
                               {msg.sender_label}
-                              {hasCustomSort && showAllBranches && (
+                              {(showAllBranches || branchAnalysis.branchPoints.size === 0) && (
                                 <span className="sort-position"> (#{index + 1})</span>
                               )}
                             </div>
@@ -1693,7 +1695,7 @@ const ConversationTimeline = ({
                       </div>
                       
                       <div className="timeline-body">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
                             p: ({ children }) => <span>{children}</span>,
@@ -1705,8 +1707,8 @@ const ConversationTimeline = ({
                             h6: ({ children }) => <strong>{children}</strong>,
                             strong: ({ children }) => <strong>{children}</strong>,
                             em: ({ children }) => <em>{children}</em>,
-                            code: ({ inline, children }) => inline ? 
-                              <code className="inline-code">{children}</code> : 
+                            code: ({ inline, children }) => inline ?
+                              <code className="inline-code">{children}</code> :
                               <code>{children}</code>,
                             pre: ({ children }) => <span>{children}</span>,
                             blockquote: ({ children }) => <span>" {children} "</span>,
@@ -1729,20 +1731,39 @@ const ConversationTimeline = ({
                             <span>{t('timeline.tags.hasThinking')}</span>
                           </div>
                         )}
-                        {/* 图片 */}
-                        {msg.images && msg.images.length > 0 && (
-                          <div className="timeline-tag">
-                            <span>🖼️</span>
-                            <span>{msg.images.length}{t('timeline.tags.images')}</span>
-                          </div>
-                        )}
-                        {/* 附件 - 主要用于人类消息 */}
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="timeline-tag">
-                            <span>📎</span>
-                            <span>{msg.attachments.length}{t('timeline.tags.attachments')}</span>
-                          </div>
-                        )}
+                        {/* 图片 - 合并 images 数组和 attachments 中的嵌入图片 */}
+                        {(() => {
+                          // 兼容性处理：对于 Grok 格式，自动检测图片类型的附件
+                          const embeddedImages = msg.attachments?.filter(att => {
+                            if (att.is_embedded_image) return true;
+                            // Grok 兼容：检查 MIME 类型
+                            if (format === 'grok' && att.file_type && att.file_type.startsWith('image/')) return true;
+                            return false;
+                          }) || [];
+                          const totalImages = (msg.images?.length || 0) + embeddedImages.length;
+                          return totalImages > 0 && (
+                            <div className="timeline-tag">
+                              <span>🖼️</span>
+                              <span>{totalImages}{t('timeline.tags.images')}</span>
+                            </div>
+                          );
+                        })()}
+                        {/* 附件 - 排除嵌入的图片，只显示真实附件 */}
+                        {(() => {
+                          // 兼容性处理：对于 Grok 格式，自动排除图片类型的附件
+                          const regularAttachments = msg.attachments?.filter(att => {
+                            if (att.is_embedded_image) return false;
+                            // Grok 兼容：排除图片类型
+                            if (format === 'grok' && att.file_type && att.file_type.startsWith('image/')) return false;
+                            return true;
+                          }) || [];
+                          return regularAttachments.length > 0 && (
+                            <div className="timeline-tag">
+                              <span>📎</span>
+                              <span>{regularAttachments.length}{t('timeline.tags.attachments')}</span>
+                            </div>
+                          );
+                        })()}
                         {/* Artifacts - 仅助手消息显示 */}
                         {msg.sender !== 'human' && msg.artifacts && msg.artifacts.length > 0 && (
                           <div className="timeline-tag">

@@ -7,6 +7,7 @@ import { useI18n } from '../index.js';
 
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 
 // 错误边界组件
@@ -91,20 +92,8 @@ const MessageDetail = ({
     return text
       .replace(/\[(?:图片|附件|图像|image|attachment)\d*\s*[:：]\s*[^\]]+\]/gi, '')
       .replace(/\[(?:图片|附件|图像|image|attachment)\d+\]/gi, '')
-      .replace(/\[图片1\]/gi, '')
-      .replace(/\[图片2\]/gi, '')
-      .replace(/\[图片3\]/gi, '')
-      .replace(/\[图片4\]/gi, '')
-      .replace(/\[图片5\]/gi, '')
+      .replace(/\[图片[1-5]\]/gi, '')
       .trim();
-  };
-
-  const sanitizeMathContent = (text) => {
-    if (!text || typeof text !== 'string') return '';
-    
-    // 不做任何处理，直接返回原文
-    // 让 remark-math 和 rehype-katex 自己处理错误
-    return text;
   };
 
   const getAvailableTabs = () => {
@@ -115,8 +104,16 @@ const MessageDetail = ({
     }
     
     if (currentMessage.sender === 'human') {
-      // 用户消息：附件
-      if (currentMessage.attachments && currentMessage.attachments.length > 0) {
+      // 用户消息：附件（排除嵌入的图片）
+      // 只显示非图片的真实附件（文档、PDF等）
+      // 兼容性处理：自动排除图片类型的附件
+      const regularAttachments = currentMessage.attachments?.filter(att => {
+        if (att.is_embedded_image) return false;
+        // 兼容旧数据：排除图片类型
+        if (att.file_type && att.file_type.startsWith('image/')) return false;
+        return true;
+      }) || [];
+      if (regularAttachments.length > 0) {
         baseTabs.push({ id: 'attachments', label: t('messageDetail.tabs.attachments') });
       }
       // Gemini NotebookLM: 当存在 Canvas 字段时，显示 Canvas Tab
@@ -125,7 +122,7 @@ const MessageDetail = ({
       }
     } else {
       // 助手消息：思考过程
-      if (format === 'claude' || format === 'claude_full_export' || format === 'jsonl_chat' || format === 'chatgpt' || !format) {
+      if (format === 'claude' || format === 'claude_full_export' || format === 'jsonl_chat' || format === 'chatgpt' || format === 'grok' || !format) {
         if (currentMessage.thinking) {
           baseTabs.push({ id: 'thinking', label: t('messageDetail.tabs.thinking') });
         }
@@ -342,9 +339,9 @@ const MessageDetail = ({
                 </div>
                 <div className="image-info">
                   <span className="image-name">{image.file_name}</span>
-                  {image.embedded_image && image.embedded_image.size && (
+                  {((image.embedded_image && image.embedded_image.size) || image.file_size) && (
                     <span className="image-size">
-                      {(image.embedded_image.size / 1024).toFixed(1)} KB
+                      {((image.embedded_image?.size || image.file_size || 0) / 1024).toFixed(1)} KB
                     </span>
                   )}
                 </div>
@@ -455,10 +452,9 @@ const MessageDetail = ({
                   key={`attachment-${selectedMessageIndex}-${index}`} 
                   fallbackContent={content}
                 >
-                  <ReactMarkdown 
+                  <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                    skipHtml={false}
+                    rehypePlugins={[rehypeKatex, rehypeRaw]}
                     components={{
                       code: ({node, inline, className, children, ...props}) => {
                         const match = /language-(\w+)/.exec(className || '');
@@ -508,16 +504,11 @@ const MessageDetail = ({
                       )
                     }}
                   >
-                    {sanitizeMathContent(content || '')}
+                    {content || ''}
                   </ReactMarkdown>
                 </MarkdownErrorBoundary>
                 {!isFullView && needsToggle && (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '10px',
-                    color: 'var(--text-secondary)',
-                    fontSize: '14px'
-                  }}>
+                  <div style={{ textAlign: 'center', padding: '10px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                     ... {t('messageDetail.attachments.contentTruncated')} ...
                   </div>
                 )}
@@ -526,16 +517,11 @@ const MessageDetail = ({
               <pre className="code-content">
                 <code>{content}</code>
                 {!isFullView && needsToggle && (
-                  <div style={{color: 'var(--text-secondary)', marginTop: '10px'}}>
-                    ... {t('messageDetail.attachments.codeTruncated')} ...
-                  </div>
+                  <div style={{color: 'var(--text-secondary)', marginTop: '10px'}}>... {t('messageDetail.attachments.codeTruncated')} ...</div>
                 )}
               </pre>
             ) : (
-              <pre className="text-content">
-                {content}
-                {!isFullView && needsToggle && '...'}
-              </pre>
+              <pre className="text-content">{content}{!isFullView && needsToggle && '...'}</pre>
             )}
           </div>
         </div>
@@ -548,26 +534,21 @@ const MessageDetail = ({
           <div key={index} className="attachment-item">
             <div className="attachment-header">
               <span className="attachment-icon">
-                {getFileExtension(attachment.file_name) === 'md' ? '📝' : 
-                 getFileExtension(attachment.file_name) === 'docx' ? '📄' : 
+                {getFileExtension(attachment.file_name) === 'md' ? '📝' :
+                 getFileExtension(attachment.file_name) === 'docx' ? '📄' :
                  getFileExtension(attachment.file_name) === 'pdf' ? '📕' : '📎'}
               </span>
               <span className="attachment-name">{attachment.file_name || t('messageDetail.attachments.unknownFile')}</span>
               <span className="attachment-size">({formatFileSize(attachment.file_size)})</span>
             </div>
-            
             {attachment.file_type && (
               <div className="attachment-meta">
                 <span>{t('messageDetail.attachments.type')}: {attachment.file_type || getFileExtension(attachment.file_name)}</span>
               </div>
             )}
-            
             {renderFileContent(attachment, index)}
-            
             {attachment.created_at && (
-              <div className="attachment-timestamp">
-                {t('messageDetail.attachments.created')}: {attachment.created_at}
-              </div>
+              <div className="attachment-timestamp">{t('messageDetail.attachments.created')}: {attachment.created_at}</div>
             )}
           </div>
         ))}
@@ -657,32 +638,49 @@ const MessageDetail = ({
 
     switch (currentActiveTab) {
       case 'content':
+        // 从 attachments 中筛选出嵌入的图片
+        // 兼容性处理：自动检测图片类型的附件
+        const embeddedImages = currentMessage.attachments?.filter(att => {
+          if (att.is_embedded_image) return true;
+          // 兼容旧数据：检查 MIME 类型
+          if (att.file_type && att.file_type.startsWith('image/')) return true;
+          return false;
+        }) || [];
+        // 合并两种图片来源：优先使用 images 数组，然后添加 embeddedImages
+        let displayImages = null;
+        if (currentMessage.images?.length > 0 || embeddedImages.length > 0) {
+          displayImages = [
+            ...(currentMessage.images || []),
+            ...embeddedImages
+          ];
+        }
+
         return (
           <div className="message-content">
-            {renderImages(currentMessage.images || currentMessage.attachments)}
-            
+            {renderImages(displayImages)}
+
             <div className="message-text">
-              <MarkdownErrorBoundary 
-                key={`content-${selectedMessageIndex}`} 
+              <MarkdownErrorBoundary
+                key={`content-${selectedMessageIndex}`}
                 fallbackContent={currentMessage.display_text}
               >
-                <ReactMarkdown 
+                <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
                   components={MarkdownComponents}
                 >
-                  {sanitizeMathContent(filterImageReferences(currentMessage.display_text || ''))}
+                  {filterImageReferences(currentMessage.display_text || '')}
                 </ReactMarkdown>
               </MarkdownErrorBoundary>
             </div>
-            
+
             {renderTools(currentMessage.tools)}
             {renderCitations(currentMessage.citations)}
           </div>
         );
 
       case 'thinking':
-        if (format !== 'claude' && format !== 'claude_full_export' && format !== 'chatgpt' && format !== 'jsonl_chat' && format) {
+        if (format !== 'claude' && format !== 'claude_full_export' && format !== 'chatgpt' && format !== 'jsonl_chat' && format !== 'grok' && format) {
           return <div className="placeholder">{t('messageDetail.placeholder.formatNotSupported.thinking')}</div>;
         }
         return (
@@ -693,12 +691,12 @@ const MessageDetail = ({
                   key={`thinking-${selectedMessageIndex}`} 
                   fallbackContent={currentMessage.thinking}
                 >
-                  <ReactMarkdown 
+                  <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
+                    rehypePlugins={[rehypeKatex, rehypeRaw]}
                     components={MarkdownComponents}
                   >
-                    {sanitizeMathContent(filterImageReferences(currentMessage.thinking))}
+                    {filterImageReferences(currentMessage.thinking)}
                   </ReactMarkdown>
                 </MarkdownErrorBoundary>
               </div>
@@ -719,9 +717,17 @@ const MessageDetail = ({
         );
 
       case 'attachments':
+        // 排除嵌入的图片，只显示真正的附件
+        // 兼容性处理：自动排除图片类型的附件
+        const regularAttachments = currentMessage.attachments?.filter(att => {
+          if (att.is_embedded_image) return false;
+          // 兼容旧数据：排除图片类型
+          if (att.file_type && att.file_type.startsWith('image/')) return false;
+          return true;
+        }) || [];
         return (
           <div className="attachments-content">
-            {renderAttachments(currentMessage.attachments)}
+            {renderAttachments(regularAttachments)}
           </div>
         );
 
@@ -736,10 +742,10 @@ const MessageDetail = ({
               >
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
                   components={MarkdownComponents}
                 >
-                  {sanitizeMathContent(currentMessage.canvas)}
+                  {currentMessage.canvas}
                 </ReactMarkdown>
               </MarkdownErrorBoundary>
             ) : (
