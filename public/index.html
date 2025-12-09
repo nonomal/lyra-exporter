@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#F2F0E9" id="theme-color-meta" />
     <meta
       name="description"
-      content="Claude和Gemini聊天记录管理工具 - 整理、搜索和导出对话数据"
+      content="Powerful tool for manage Claude, ChatGPT, Gemini and SillyTavern chat conversations."
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo1024.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
@@ -18,9 +18,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Lyra Exporter">
     
-    <title>Claude聊天记录管理 | Lyra's Exporter</title>
-    <meta name="author" content="Lyra (Yalums)" />
-    <meta name="copyright" content="© 2025 Lyra's Exporter. All Rights Reserved." />
+    <title>Lyra's Exporter</title>
+    <meta name="author" content="Yalums" />
+    <meta name="copyright" content="© 2025 Lyra Exporter. All Rights Reserved." />
     
     <!-- 动态主题色设置 -->
     <script>
@@ -130,93 +130,6 @@ if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && 
 }
     </script>
 
-    <!-- 版本更新公告 -->
-    <div id="version-announcement" style="display: none;">
-      <div style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        box-sizing: border-box;
-      ">
-        <div style="
-          background: white;
-          border-radius: 12px;
-          padding: 24px;
-          max-width: 500px;
-          width: 100%;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-          animation: slideIn 0.3s ease-out;
-        ">
-          <h2 style="
-            margin: 0 0 16px 0;
-            color: #333;
-            font-size: 20px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          ">
-            <span style="font-size: 24px;">🎉</span>
-            版本更新 - 新功能上线
-          </h2>
-
-          <div style="
-            color: #666;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 20px;
-          ">
-            <p style="margin: 0 0 12px 0; font-weight: 500; color: #444;">本次更新带来以下新功能：</p>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li style="margin-bottom: 8px;">
-                <strong>支持 Gemini 多分支解析</strong><br/>
-                <span style="color: #888; font-size: 13px;">打开配套脚本的「实时」选项即可使用</span>
-              </li>
-              <li style="margin-bottom: 8px;">
-                <strong>批量导出最新分支功能</strong><br/>
-                <span style="color: #888; font-size: 13px;">原来的 claude_all_conversation 现在可以导出到一个压缩包内</span>
-              </li>
-              <li style="margin-bottom: 8px;">
-                <strong>一键跳转到最新分支</strong><br/>
-                <span style="color: #888; font-size: 13px;">快速查看对话的最新内容</span>
-              </li>
-              <li style="margin-bottom: 0;">
-                <strong>批量导出对话的最新分支</strong><br/>
-                <span style="color: #888; font-size: 13px;">更便捷的批量导出体验</span>
-              </li>
-              <li style="margin-bottom: 0;">
-                <strong>支持PDF和长截图格式导出</strong><br/>
-                <span style="color: #888; font-size: 13px;">正在不断优化导出体验</span>
-              </li>
-            </ul>
-          </div>
-
-          <button onclick="closeAnnouncement()" style="
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: transform 0.2s;
-          " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-            我知道了
-          </button>
-        </div>
-      </div>
-    </div>
-
     <style>
       @keyframes slideIn {
         from {
@@ -248,7 +161,7 @@ if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && 
 
     <script>
       // 版本公告管理
-      const ANNOUNCEMENT_VERSION = 'v1.1.0'; // 更新版本号会重新显示公告
+      const ANNOUNCEMENT_VERSION = 'v1.3.0'; // 更新版本号会重新显示公告
       const STORAGE_KEY = 'announcement_seen_' + ANNOUNCEMENT_VERSION;
 
       // 检测语言变体：简体中文(zh)、繁体中文(zh_)、英文(en)
@@ -291,11 +204,11 @@ if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && 
           intro: '本次更新带来以下新功能：',
           button: '我知道了',
           features: [
-            { title: '支持 Gemini 多分支解析', desc: '打开配套脚本的「实时」选项即可使用' },
-            { title: '批量导出最新分支功能', desc: '原来的 claude_all_conversation 现在可以导出到一个压缩包内' },
-            { title: '一键跳转到最新分支', desc: '快速查看对话的最新内容' },
-            { title: '批量导出对话的最新分支', desc: '更便捷的批量导出体验' },
-            { title: '支持PDF和长截图格式导出', desc: '正在不断优化导出体验' }
+            { title: '支持 Grok 多分支解析', desc: '更新配套脚本至最新版本即可使用' },
+            { title: '批量加载、导出功能', desc: '现在可以一次读入整个文件夹(纯本地浏览器静态工作)，修复之前批量导出markdown失败的问题' },
+            { title: '语义搜索功能', desc: '需要配合embedding模型使用' },
+            { title: 'SillyTavern多分支解析增强', desc: '现在可以读入一整个文件夹的SillyTavern对话，只能合并不同分支到同一时间线' },
+            { title: '移动端体验优化', desc: '向下滚动隐藏导航栏，支持返回操作，移动端专项全局搜索界面，以及其他细节' }
           ]
         },
         zh_: {
@@ -303,11 +216,11 @@ if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && 
           intro: '本次更新帶來以下新功能：',
           button: '我知道了',
           features: [
-            { title: '支援 Gemini 多分支解析', desc: '開啟配套腳本的「即時」選項即可使用' },
-            { title: '批次匯出最新分支功能', desc: '原來的 claude_all_conversation 現在可以匯出到一個壓縮包內' },
-            { title: '一鍵跳轉到最新分支', desc: '快速查看對話的最新內容' },
-            { title: '批次匯出對話的最新分支', desc: '更便捷的批次匯出體驗' },
-            { title: '支援PDF和長截圖格式匯出', desc: '正在不斷優化匯出體驗' }
+            { title: '支援 Grok 多分支解析', desc: '配套腳本的最新版本可用' },
+            { title: '批次匯出最新分支功能', desc: '現在整個資料夾可一次載入（純粹在本地瀏覽器進行靜態處理），解決了先前批次匯出 Markdown 檔案失敗的問題' },
+            { title: '語義搜尋', desc: '需要與嵌入模型整合' },
+            { title: 'SillyTavern多分支解析強化', desc: '現在可以匯入整個 SillyTavern 對話資料夾，將不同分支合併為完整的時序記錄' },
+            { title: 'Mobile 體驗優化', desc: '向下捲動以隱藏導覽列，支援返回功能、專屬行動裝置全站搜尋介面及其他細節' }
           ]
         },
         en: {
@@ -315,11 +228,11 @@ if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && 
           intro: 'This update brings the following new features:',
           button: 'Got it',
           features: [
-            { title: 'Gemini Multi-branch Parsing', desc: 'Enable the "Realtime" option in the companion script to use' },
-            { title: 'Batch Export Latest Branch', desc: 'Export claude_all_conversation to a single zip file' },
-            { title: 'Jump to Latest Branch', desc: 'Quickly view the latest content of conversations' },
-            { title: 'Batch Export Latest Branches', desc: 'More convenient batch export experience' },
-            { title: 'PDF and Long Screenshot Export', desc: 'Continuously improving export experience' }
+            { title: 'Grok Multi-branch Parsing', desc: 'Update the supporting scripts to the latest version to use them.' },
+            { title: 'Batch import and export', desc: 'Now supports loading entire folders at once (pure local browser static work), fixing the previous issue where batch exporting Markdown files failed.' },
+            { title: 'Semantic search', desc: 'Requires integration with embedding models.' },
+            { title: 'SillyTavern Multi-Branch Parsing Enhancement', desc: 'It is now possible to import an entire folder of SillyTavern conversations, merging different branches into a completed timeline.' },
+            { title: 'Mobile Experience Optimisation', desc: 'Scroll down to hide the navigation bar, supporting the back function, a dedicated mobile global search interface, and other details.' }
           ]
         }
       };

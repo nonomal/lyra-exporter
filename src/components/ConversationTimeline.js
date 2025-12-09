@@ -393,7 +393,8 @@ const ConversationTimeline = ({
   onDisplayMessagesChange = null, // 新增：当显示消息更改时通知父组件
   onShowSettings = null, // 新增:打开设置面板
   onHideNavbar = null, // 新增:控制导航栏显示
-  onRename = null // 新增:重命名回调
+  onRename = null, // 新增:重命名回调
+  onMobileDetailChange = null // 新增:移动端详情显示状态变化回调
 }) => {
   const { t } = useI18n();
   const [selectedMessageIndex, setSelectedMessageIndex] = useState(null);
@@ -404,7 +405,14 @@ const ConversationTimeline = ({
   const [copiedMessageIndex, setCopiedMessageIndex] = useState(null);
   const [sortingEnabled, setSortingEnabled] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false); // 新增:移动端详情显示状态
-  
+
+  // 通知父组件移动端详情显示状态变化
+  useEffect(() => {
+    if (onMobileDetailChange) {
+      onMobileDetailChange(showMobileDetail);
+    }
+  }, [showMobileDetail, onMobileDetailChange]);
+
   // 重命名相关状态
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameManager] = useState(() => getRenameManager());
@@ -416,6 +424,7 @@ const ConversationTimeline = ({
   const [scrollDirection, setScrollDirection] = useState('up');
   const [forceUpdateCounter, setForceUpdateCounter] = useState(0); // 用于强制更新
   const leftPanelRef = React.useRef(null);
+  const mobileDetailBodyRef = React.useRef(null); // 移动端详情 body 引用
   
   // 消息定位相关
   const messageRefs = useRef({});
@@ -1078,20 +1087,53 @@ const ConversationTimeline = ({
     if (!isDesktop) {
       // 移动端:显示移动端详情 modal
       setShowMobileDetail(true);
+      // 添加 history 记录，支持后退关闭详情
+      window.history.pushState(
+        { view: 'detail', msgIndex: messageIndex },
+        ''
+      );
       // 隐藏导航栏
       if (onHideNavbar) {
         onHideNavbar(true);
       }
     }
   };
-  
+
   const handleCloseMobileDetail = () => {
-    setShowMobileDetail(false);
-    // 恢复导航栏显示
-    if (onHideNavbar) {
-      onHideNavbar(false);
+    // 使用 window.history.back() 触发后退，状态更新由 popstate 处理
+    if (window.history.state && window.history.state.view === 'detail') {
+      window.history.back();
+    } else {
+      // 直接关闭（用于没有 history 记录的情况）
+      setShowMobileDetail(false);
+      if (onHideNavbar) {
+        onHideNavbar(false);
+      }
     }
   };
+
+  // 监听 popstate 事件，处理移动端详情后退
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // 如果当前显示移动端详情，且后退后不再是 detail 视图，则关闭详情
+      if (showMobileDetail && (!event.state || event.state.view !== 'detail')) {
+        setShowMobileDetail(false);
+        if (onHideNavbar) {
+          onHideNavbar(false);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [showMobileDetail, onHideNavbar]);
+
+  // 当移动端切换消息时，重置滚动位置到顶部
+  useEffect(() => {
+    if (showMobileDetail && mobileDetailBodyRef.current) {
+      mobileDetailBodyRef.current.scrollTop = 0;
+    }
+  }, [selectedMessageIndex, showMobileDetail]);
   
   const handleNavigateMessage = (direction) => {
     const currentIndex = displayMessages.findIndex(m => m.index === selectedMessageIndex);
@@ -1376,6 +1418,7 @@ const ConversationTimeline = ({
   // 优先根据format判断，因为format更准确
   if (format === 'jsonl_chat') return 'assistant platform-jsonl_chat';
   if (format === 'chatgpt') return 'assistant platform-chatgpt';
+  if (format === 'grok') return 'assistant platform-grok';
   if (format === 'gemini_notebooklm') {
     const platformLower = platform?.toLowerCase() || '';
     if (platformLower.includes('notebooklm')) return 'assistant platform-notebooklm';
@@ -1386,6 +1429,7 @@ const ConversationTimeline = ({
   const platformLower = platform?.toLowerCase() || 'claude';
   if (platformLower.includes('jsonl')) return 'assistant platform-jsonl_chat';
   if (platformLower.includes('chatgpt')) return 'assistant platform-chatgpt';
+  if (platformLower.includes('grok')) return 'assistant platform-grok';
   if (platformLower.includes('gemini')) return 'assistant platform-gemini';
   if (platformLower.includes('ai studio') || platformLower.includes('aistudio')) return 'assistant platform-aistudio';
   if (platformLower.includes('notebooklm')) return 'assistant platform-notebooklm';
@@ -1651,7 +1695,7 @@ const ConversationTimeline = ({
                           <div className="sender-info">
                             <div className="sender-name">
                               {msg.sender_label}
-                              {hasCustomSort && showAllBranches && (
+                              {(showAllBranches || branchAnalysis.branchPoints.size === 0) && (
                                 <span className="sort-position"> (#{index + 1})</span>
                               )}
                             </div>
@@ -1693,7 +1737,7 @@ const ConversationTimeline = ({
                       </div>
                       
                       <div className="timeline-body">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
                             p: ({ children }) => <span>{children}</span>,
@@ -1705,8 +1749,8 @@ const ConversationTimeline = ({
                             h6: ({ children }) => <strong>{children}</strong>,
                             strong: ({ children }) => <strong>{children}</strong>,
                             em: ({ children }) => <em>{children}</em>,
-                            code: ({ inline, children }) => inline ? 
-                              <code className="inline-code">{children}</code> : 
+                            code: ({ inline, children }) => inline ?
+                              <code className="inline-code">{children}</code> :
                               <code>{children}</code>,
                             pre: ({ children }) => <span>{children}</span>,
                             blockquote: ({ children }) => <span>" {children} "</span>,
@@ -1729,20 +1773,39 @@ const ConversationTimeline = ({
                             <span>{t('timeline.tags.hasThinking')}</span>
                           </div>
                         )}
-                        {/* 图片 */}
-                        {msg.images && msg.images.length > 0 && (
-                          <div className="timeline-tag">
-                            <span>🖼️</span>
-                            <span>{msg.images.length}{t('timeline.tags.images')}</span>
-                          </div>
-                        )}
-                        {/* 附件 - 主要用于人类消息 */}
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="timeline-tag">
-                            <span>📎</span>
-                            <span>{msg.attachments.length}{t('timeline.tags.attachments')}</span>
-                          </div>
-                        )}
+                        {/* 图片 - 合并 images 数组和 attachments 中的嵌入图片 */}
+                        {(() => {
+                          // 兼容性处理：对于 Grok 格式，自动检测图片类型的附件
+                          const embeddedImages = msg.attachments?.filter(att => {
+                            if (att.is_embedded_image) return true;
+                            // Grok 兼容：检查 MIME 类型
+                            if (format === 'grok' && att.file_type && att.file_type.startsWith('image/')) return true;
+                            return false;
+                          }) || [];
+                          const totalImages = (msg.images?.length || 0) + embeddedImages.length;
+                          return totalImages > 0 && (
+                            <div className="timeline-tag">
+                              <span>🖼️</span>
+                              <span>{totalImages}{t('timeline.tags.images')}</span>
+                            </div>
+                          );
+                        })()}
+                        {/* 附件 - 排除嵌入的图片，只显示真实附件 */}
+                        {(() => {
+                          // 兼容性处理：对于 Grok 格式，自动排除图片类型的附件
+                          const regularAttachments = msg.attachments?.filter(att => {
+                            if (att.is_embedded_image) return false;
+                            // Grok 兼容：排除图片类型
+                            if (format === 'grok' && att.file_type && att.file_type.startsWith('image/')) return false;
+                            return true;
+                          }) || [];
+                          return regularAttachments.length > 0 && (
+                            <div className="timeline-tag">
+                              <span>📎</span>
+                              <span>{regularAttachments.length}{t('timeline.tags.attachments')}</span>
+                            </div>
+                          );
+                        })()}
                         {/* Artifacts - 仅助手消息显示 */}
                         {msg.sender !== 'human' && msg.artifacts && msg.artifacts.length > 0 && (
                           <div className="timeline-tag">
@@ -1943,8 +2006,8 @@ const ConversationTimeline = ({
                   </button>
                 </div>
               </div>
-              
-              <div className="mobile-detail-body">
+
+              <div className="mobile-detail-body" ref={mobileDetailBodyRef}>
                 <MessageDetailPanel
                   data={data}
                   selectedMessageIndex={selectedMessageIndex}
